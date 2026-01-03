@@ -1,0 +1,16 @@
+# Environment files
+.env
+
+# Build output
+/main
+
+# Web directory (built frontend)
+web/*
+!web/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
