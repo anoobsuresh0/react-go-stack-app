@@ -1,10 +1,13 @@
 {
-  "name": "react-go-stack-app",
+  "name": "@anoobsuresh0/react-go-stack-app",
   "version": "1.0.0",
-  "description": "Create a full-stack Go + React + PostgreSQL application with Docker",
+  "description": "CLI to scaffold production-ready full-stack apps with Go (Gin), React 19 (Vite + TypeScript + Tailwind + shadcn/ui), and PostgreSQL with Docker",
   "type": "module",
   "bin": {
     "react-go-stack-app": "./bin/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "bin",
