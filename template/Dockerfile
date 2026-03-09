@@ -30,6 +30,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
+# Ensure all dependencies are resolved (template may have minimal go.sum)
+RUN go mod tidy
+
 # Build the application with optimized flags
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o main ./cmd/api
 

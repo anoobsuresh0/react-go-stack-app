@@ -10,7 +10,7 @@ Full-stack application with Go backend and React frontend.
 
 - **Backend:** Go with clean architecture (handlers → repository → database)
 - **Frontend:** React 19 + TypeScript + Vite in `web/` directory
-- **Database:** PostgreSQL with golang-migrate for migrations
+- **Database:** PostgreSQL with pgx-based auto-migrations
 
 ## Key Directories
 

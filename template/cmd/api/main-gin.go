@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -21,15 +22,15 @@ func main() {
 
 	cfg := config.Load()
 
-	if err := database.RunMigrations(cfg.DatabaseURL); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
-	}
-
 	pool, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer pool.Close()
+
+	if err := database.RunMigrations(context.Background(), pool, "migrations"); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
 
 	counterRepo := repository.NewCounterRepository(pool)
 	counterHandler := handlers.NewCounterHandler(counterRepo)
