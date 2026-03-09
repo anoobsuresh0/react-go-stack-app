@@ -1,0 +1,63 @@
+services:
+  api-staging:
+    image: {{PROJECT_NAME_SNAKE}}:staging
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DB_HOST=db-staging
+      - DB_PORT=5432
+      - DB_USER=${STAGING_POSTGRES_USER}
+      - DB_PASSWORD=${STAGING_POSTGRES_PASSWORD}
+      - DB_NAME=${STAGING_POSTGRES_DB}
+      - DB_SSLMODE=disable
+      - PORT=8080
+      - ENV=staging
+      - STATIC_PATH=./static
+      - CORS_ORIGINS=https://{{STAGING_DOMAIN}}
+      - FRONTEND_URL=https://{{STAGING_DOMAIN}}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{PROJECT_NAME_SNAKE}}-staging.rule=Host(`{{STAGING_DOMAIN}}`)"
+      - "traefik.http.routers.{{PROJECT_NAME_SNAKE}}-staging.entrypoints=websecure"
+      - "traefik.http.routers.{{PROJECT_NAME_SNAKE}}-staging.tls.certresolver=letsencrypt"
+      - "traefik.http.services.{{PROJECT_NAME_SNAKE}}-staging.loadbalancer.server.port=8080"
+    depends_on:
+      db-staging:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    networks:
+      - traefik-network
+      - {{PROJECT_NAME_SNAKE}}-staging-network
+
+  db-staging:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${STAGING_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${STAGING_POSTGRES_DB}
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${STAGING_POSTGRES_USER} -d ${STAGING_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - {{PROJECT_NAME_SNAKE}}-staging-network
+
+networks:
+  traefik-network:
+    external: true
+  {{PROJECT_NAME_SNAKE}}-staging-network:
+    driver: bridge
+
+volumes:
+  staging_postgres_data:

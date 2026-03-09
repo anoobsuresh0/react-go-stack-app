@@ -9,6 +9,10 @@ export interface ProjectAnswers {
   description: string;
   appTitle: string;
   appAbbreviation: string;
+  goFramework: 'gin' | 'stdlib';
+  stateManagement: 'redux' | 'simple';
+  useAuth: boolean;
+  dockerEnv: 'local' | 'full';
   productionDomain: string;
   stagingDomain: string;
   dbName: string;
@@ -39,7 +43,7 @@ export async function runPrompts(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const questions: any[] = [];
 
-  // Project name
+  // 1. Project name
   if (!providedName) {
     questions.push({
       type: 'input',
@@ -61,7 +65,7 @@ export async function runPrompts(
     });
   }
 
-  // Project description
+  // 2. Project description
   questions.push({
     type: 'input',
     name: 'description',
@@ -69,7 +73,7 @@ export async function runPrompts(
     default: 'A full-stack application built with Go and React',
   });
 
-  // App title
+  // 3. App title
   questions.push({
     type: 'input',
     name: 'appTitle',
@@ -78,35 +82,78 @@ export async function runPrompts(
       toTitleCase(providedName || answers.projectName || 'My App'),
   });
 
-  // App abbreviation
+  // 4. App abbreviation
   questions.push({
     type: 'input',
     name: 'appAbbreviation',
-    message: 'App abbreviation (3-5 chars, shown in sidebar):',
+    message: 'App abbreviation (2-6 chars, shown in sidebar):',
     default: (answers: Partial<ProjectAnswers>) =>
       getAbbreviation(providedName || answers.projectName || 'APP'),
     validate: (input: string) =>
       input.length >= 2 && input.length <= 6 ? true : 'Must be 2-6 characters',
   });
 
-  // Production domain
+  // 5. Go framework
+  questions.push({
+    type: 'list',
+    name: 'goFramework',
+    message: 'Go framework:',
+    choices: [
+      { name: 'Gin', value: 'gin' },
+      { name: 'Standard Library (net/http)', value: 'stdlib' },
+    ],
+  });
+
+  // 6. State management
+  questions.push({
+    type: 'list',
+    name: 'stateManagement',
+    message: 'State management:',
+    choices: [
+      { name: 'Redux Toolkit', value: 'redux' },
+      { name: 'Simple (useState + API calls)', value: 'simple' },
+    ],
+  });
+
+  // 7. Authentication
+  questions.push({
+    type: 'confirm',
+    name: 'useAuth',
+    message: 'Include Google OAuth authentication?',
+    default: false,
+  });
+
+  // 8. Docker environment
+  questions.push({
+    type: 'list',
+    name: 'dockerEnv',
+    message: 'Docker environment:',
+    choices: [
+      { name: 'Local development only', value: 'local' },
+      { name: 'Local + Staging + Production (with Traefik)', value: 'full' },
+    ],
+  });
+
+  // 9. Production domain (only when dockerEnv === 'full')
   questions.push({
     type: 'input',
     name: 'productionDomain',
     message: 'Production domain (e.g., app.example.com):',
     default: 'app.example.com',
+    when: (answers: Partial<ProjectAnswers>) => answers.dockerEnv === 'full',
   });
 
-  // Staging domain
+  // 10. Staging domain (only when dockerEnv === 'full')
   questions.push({
     type: 'input',
     name: 'stagingDomain',
     message: 'Staging domain:',
     default: (answers: Partial<ProjectAnswers>) =>
       answers.productionDomain?.replace(/^([^.]+)/, '$1-staging') || 'staging.example.com',
+    when: (answers: Partial<ProjectAnswers>) => answers.dockerEnv === 'full',
   });
 
-  // Database name
+  // 11. Database name
   questions.push({
     type: 'input',
     name: 'dbName',
@@ -135,8 +182,12 @@ export async function runPrompts(
     description: answers.description!,
     appTitle: answers.appTitle!,
     appAbbreviation: answers.appAbbreviation!,
-    productionDomain: answers.productionDomain!,
-    stagingDomain: answers.stagingDomain!,
+    goFramework: answers.goFramework!,
+    stateManagement: answers.stateManagement!,
+    useAuth: answers.useAuth!,
+    dockerEnv: answers.dockerEnv!,
+    productionDomain: answers.dockerEnv === 'full' ? answers.productionDomain! : '',
+    stagingDomain: answers.dockerEnv === 'full' ? answers.stagingDomain! : '',
     dbName: answers.dbName!,
   };
 }
