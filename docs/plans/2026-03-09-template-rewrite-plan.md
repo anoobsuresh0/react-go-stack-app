@@ -28,7 +28,7 @@ Update `package.json`:
 ```json
 {
   "name": "@anoobsuresh0/react-go-stack-app",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "CLI to scaffold production-ready full-stack apps with Go (Gin or stdlib), React 19 (Vite + TypeScript + Tailwind + shadcn/ui), PostgreSQL, and Docker with optional Google OAuth"
 }
 ```
@@ -36,7 +36,7 @@ Update `package.json`:
 **Step 3: Commit**
 
 ```bash
-git add -A && git commit -m "chore: remove old template, bump to v2.0.0"
+git add -A && git commit -m "chore: remove old template, bump to v2.0.2"
 ```
 
 ---
@@ -1326,12 +1326,12 @@ cd web && npm install && npm run dev  # Verify frontend starts
 **Step 4: Publish to npm**
 
 ```bash
-npm version 2.0.0
+npm version 2.0.2
 npm publish
 ```
 
 **Step 5: Commit final changes**
 
 ```bash
-git add -A && git commit -m "chore: build and prepare v2.0.0 release"
+git add -A && git commit -m "chore: build and prepare v2.0.2 release"
 ```

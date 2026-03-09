@@ -3,24 +3,15 @@ package database
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/lib/pq"
 )
 
 func RunMigrations(databaseURL string) error {
-	// golang-migrate's pgx/v5 driver registers under the "pgx5" scheme,
-	// so convert postgres:// or postgresql:// to pgx5://
-	migrateURL := databaseURL
-	if strings.HasPrefix(migrateURL, "postgres://") {
-		migrateURL = "pgx5://" + strings.TrimPrefix(migrateURL, "postgres://")
-	} else if strings.HasPrefix(migrateURL, "postgresql://") {
-		migrateURL = "pgx5://" + strings.TrimPrefix(migrateURL, "postgresql://")
-	}
-
-	m, err := migrate.New("file://migrations", migrateURL)
+	m, err := migrate.New("file://migrations", databaseURL)
 	if err != nil {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
