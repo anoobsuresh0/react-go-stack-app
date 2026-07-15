@@ -1,15 +1,16 @@
 # {{DOCKER_DB_BLOCK_START}}
-.PHONY: dev build build-web build-api start tidy clean db-up db-down db-shell db-reset
+.PHONY: dev docker-up docker-down build build-web build-api start tidy clean db-shell db-reset
 
-# Start the database (Docker), then run the backend with live output.
-dev: db-up
+# Run the backend: applies any pending migrations, then starts the server.
+# Start the database first with `make docker-up`.
+dev:
 	go run ./cmd/api
 
-# Database
-db-up:
+# Database (Docker)
+docker-up:
 	docker compose up -d --wait db
 
-db-down:
+docker-down:
 	docker compose down
 
 db-shell:
@@ -23,7 +24,8 @@ db-reset:
 # {{LOCAL_DB_BLOCK_START}}
 .PHONY: dev build build-web build-api start tidy clean db-create db-drop db-shell
 
-# Run the backend (expects PostgreSQL to be running locally).
+# Run the backend: applies any pending migrations, then starts the server.
+# Expects PostgreSQL to be running locally (`make db-create` the first time).
 dev:
 	go run ./cmd/api
 

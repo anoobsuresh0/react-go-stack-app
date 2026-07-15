@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -14,10 +15,10 @@ func NewHealthHandler(db *pgxpool.Pool) *HealthHandler {
 	return &HealthHandler{db: db}
 }
 
-func (h *HealthHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	if err := h.db.Ping(r.Context()); err != nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unhealthy", "error": err.Error()})
+func (h *HealthHandler) HealthCheck(c *gin.Context) {
+	if err := h.db.Ping(c.Request.Context()); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "healthy"})
+	c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 }

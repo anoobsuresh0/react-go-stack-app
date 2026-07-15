@@ -1,7 +1,7 @@
 {
   "name": "@anoobsuresh0/react-go-stack-app",
   "version": "3.0.0",
-  "description": "CLI to scaffold production-ready full-stack apps with Go (net/http), React (Vite + TypeScript + Tailwind, optional shadcn/ui), and PostgreSQL 18 (Docker or local)",
+  "description": "CLI to scaffold production-ready full-stack apps with Go (Gin), React (Vite + TypeScript + Tailwind, optional shadcn/ui), and PostgreSQL 18 (Docker or local)",
   "type": "module",
   "bin": {
     "react-go-stack-app": "./bin/index.js"

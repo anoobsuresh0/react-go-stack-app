@@ -26,7 +26,7 @@ program
   .option('--skip-git', 'skip git initialization')
   .action(async (projectName: string | undefined, options: CliOptions) => {
     console.log(chalk.bold('\n  React Go Stack App\n'));
-    console.log(chalk.dim('  Go (net/http) · React + Vite + Tailwind · PostgreSQL 18\n'));
+    console.log(chalk.dim('  Go (Gin) · React + Vite + Tailwind · PostgreSQL 18\n'));
 
     try {
       const answers = await runPrompts(projectName, {

@@ -5,23 +5,24 @@ export function printSuccess(answers: ProjectAnswers): void {
   console.log('\n' + chalk.green('  Success!') + ' Created ' + chalk.cyan(answers.projectName) + '\n');
 
   console.log(chalk.dim('  Stack:'));
-  console.log(chalk.dim('    Backend:      Go (net/http) + pgx'));
+  console.log(chalk.dim('    Backend:      Go (Gin) + pgx'));
   console.log(chalk.dim(`    Frontend:     React + Vite + Tailwind${answers.useShadcn ? ' + shadcn/ui' : ''}`));
   console.log(chalk.dim(`    Database:     PostgreSQL 18 (${answers.database === 'docker' ? 'Docker' : 'local install'})\n`));
 
   console.log(chalk.bold('  Next steps:\n'));
 
   let step = 1;
-  if (answers.database === 'local') {
+  if (answers.database === 'docker') {
+    console.log(chalk.cyan(`  ${step++}. Start the database (Docker):`));
+    console.log(`     cd ${answers.projectName}`);
+    console.log('     make docker-up\n');
+  } else {
     console.log(chalk.cyan(`  ${step++}. Create the database (PostgreSQL 18 must be running):`));
     console.log(`     cd ${answers.projectName}`);
     console.log('     make db-create\n');
   }
 
-  console.log(chalk.cyan(`  ${step++}. Start the backend${answers.database === 'docker' ? ' (starts the database in Docker first)' : ''}:`));
-  if (answers.database === 'docker') {
-    console.log(`     cd ${answers.projectName}`);
-  }
+  console.log(chalk.cyan(`  ${step++}. Start the backend (applies migrations, then serves):`));
   console.log('     make dev\n');
 
   console.log(chalk.cyan(`  ${step++}. Start the frontend (new terminal):`));

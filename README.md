@@ -2,7 +2,7 @@
 
 Scaffold a production-ready full-stack application in seconds:
 
-- **Backend:** Go (`net/http`, Go 1.25) + pgx/v5, graceful shutdown, embedded SQL migrations
+- **Backend:** Go (Gin, Go 1.25) + pgx/v5, graceful shutdown, embedded SQL migrations
 - **Frontend:** React 19 + Vite 8 + TypeScript + Tailwind CSS 4, optional shadcn/ui
 - **Database:** PostgreSQL 18 — in Docker (managed for you) or your local install
 
@@ -21,7 +21,8 @@ Then:
 
 ```bash
 cd my-app
-make dev          # starts the database (Docker mode) + the Go backend
+make docker-up    # start PostgreSQL 18 in Docker (Docker mode; local mode: make db-create)
+make dev          # run the Go backend — applies pending migrations, then serves
 
 # in a second terminal
 cd my-app/web
@@ -50,8 +51,7 @@ my-app/
 ├── internal/
 │   ├── config/              # env configuration (DATABASE_URL, PORT, ...)
 │   ├── database/            # pgx pool + transactional migration runner
-│   ├── handlers/            # HTTP handlers (JSON)
-│   ├── middleware/          # CORS
+│   ├── handlers/            # HTTP handlers (Gin, JSON)
 │   ├── models/
 │   └── repository/          # database queries
 ├── migrations/              # SQL migrations, embedded into the binary

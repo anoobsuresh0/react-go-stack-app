@@ -1,12 +1,15 @@
 # {{APP_TITLE}}
 
-Full-stack application: Go (net/http) backend, React (Vite + TypeScript + Tailwind) frontend, PostgreSQL 18.
+Full-stack application: Go (Gin) backend, React (Vite + TypeScript + Tailwind) frontend, PostgreSQL 18.
 
 ## Quick start
 
 <!-- {{DOCKER_DB_BLOCK_START}} -->
 ```bash
-# Terminal 1 — start PostgreSQL (Docker) + the backend
+# One-time (and after reboots): start PostgreSQL 18 in Docker
+make docker-up
+
+# Terminal 1 — run the backend (applies pending migrations, then serves)
 make dev
 
 # Terminal 2 — start the frontend
@@ -20,7 +23,7 @@ npm run dev
 # One-time: create the database (PostgreSQL 18 must be running locally)
 make db-create
 
-# Terminal 1 — start the backend
+# Terminal 1 — run the backend (applies pending migrations, then serves)
 make dev
 
 # Terminal 2 — start the frontend
@@ -42,8 +45,7 @@ Configuration lives in `.env` (optional — sensible defaults are built in). Cop
 ├── internal/
 │   ├── config/             # environment configuration
 │   ├── database/           # connection pool + migration runner
-│   ├── handlers/           # HTTP handlers
-│   ├── middleware/         # CORS
+│   ├── handlers/           # HTTP handlers (Gin)
 │   ├── models/             # data structures
 │   └── repository/         # database queries (pgx/v5)
 ├── migrations/             # SQL migrations (embedded into the binary)
@@ -66,9 +68,9 @@ Configuration lives in `.env` (optional — sensible defaults are built in). Cop
 
 | Target | Description |
 | ------ | ----------- |
-| `make dev` | Run the backend in development mode |
+| `make dev` | Run the backend: applies pending migrations, then serves |
 <!-- {{DOCKER_DB_BLOCK_START}} -->
-| `make db-up` / `make db-down` | Start / stop the PostgreSQL container |
+| `make docker-up` / `make docker-down` | Start / stop the PostgreSQL container |
 | `make db-shell` | psql shell into the database |
 | `make db-reset` | Recreate the database from scratch (deletes data) |
 <!-- {{DOCKER_DB_BLOCK_END}} -->

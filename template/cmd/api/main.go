@@ -15,10 +15,11 @@ import (
 	"{{PROJECT_NAME}}/internal/config"
 	"{{PROJECT_NAME}}/internal/database"
 	"{{PROJECT_NAME}}/internal/handlers"
-	"{{PROJECT_NAME}}/internal/middleware"
 	"{{PROJECT_NAME}}/internal/repository"
 	"{{PROJECT_NAME}}/migrations"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
@@ -37,22 +38,37 @@ func main() {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
+	if cfg.Environment == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	router := gin.New()
+	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     strings.Split(cfg.CORSOrigins, ","),
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	counterRepo := repository.NewCounterRepository(pool)
 	counterHandler := handlers.NewCounterHandler(counterRepo)
 	healthHandler := handlers.NewHealthHandler(pool)
 
-	mux := http.NewServeMux()
+	api := router.Group("/api")
+	{
+		api.GET("/health", healthHandler.HealthCheck)
+		api.GET("/counter", counterHandler.GetCounter)
+		api.POST("/counter/increment", counterHandler.IncrementCounter)
+		api.POST("/counter/decrement", counterHandler.DecrementCounter)
+	}
 
-	mux.HandleFunc("GET /api/health", healthHandler.HealthCheck)
-	mux.HandleFunc("GET /api/counter", counterHandler.GetCounter)
-	mux.HandleFunc("POST /api/counter/increment", counterHandler.IncrementCounter)
-	mux.HandleFunc("POST /api/counter/decrement", counterHandler.DecrementCounter)
-
-	registerStatic(mux, cfg.StaticPath)
+	registerStatic(router, cfg.StaticPath)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           middleware.CORSMiddleware(cfg.CORSOrigins)(mux),
+		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -79,28 +95,26 @@ func main() {
 }
 
 // registerStatic serves the built frontend (web/dist) with an SPA fallback.
-// In development the frontend runs separately via `npm run dev`, so this is a
-// no-op until `make build` has produced the static assets.
-func registerStatic(mux *http.ServeMux, staticPath string) {
-	if _, err := os.Stat(staticPath); err != nil {
-		return
-	}
-
-	fileServer := http.FileServer(http.Dir(staticPath))
-	index := filepath.Join(staticPath, "index.html")
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") {
-			http.NotFound(w, r)
+// In development the frontend runs separately via `npm run dev`, so this only
+// kicks in after `make build` has produced the static assets.
+func registerStatic(router *gin.Engine, staticPath string) {
+	router.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
 			return
 		}
-		cleaned := filepath.Clean(strings.TrimPrefix(r.URL.Path, "/"))
+		if _, err := os.Stat(staticPath); err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+		cleaned := filepath.Clean(strings.TrimPrefix(c.Request.URL.Path, "/"))
 		if cleaned != "." && !strings.HasPrefix(cleaned, "..") {
-			if info, err := os.Stat(filepath.Join(staticPath, cleaned)); err == nil && !info.IsDir() {
-				fileServer.ServeHTTP(w, r)
+			file := filepath.Join(staticPath, cleaned)
+			if info, err := os.Stat(file); err == nil && !info.IsDir() {
+				c.File(file)
 				return
 			}
 		}
-		http.ServeFile(w, r, index)
+		c.File(filepath.Join(staticPath, "index.html"))
 	})
 }

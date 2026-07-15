@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-Full-stack application: Go (net/http) backend, React (Vite + TypeScript + Tailwind) frontend, PostgreSQL 18.
+Full-stack application: Go (Gin) backend, React (Vite + TypeScript + Tailwind) frontend, PostgreSQL 18.
 
 ## Architecture
 
-- **Backend:** Go with clean layering (handlers → repository → database), pgx/v5 pool
+- **Backend:** Go with Gin and clean layering (handlers → repository → database), pgx/v5 pool
 - **Frontend:** React + TypeScript + Vite in `web/`, Tailwind CSS v4
 - **Database:** PostgreSQL 18; SQL migrations embedded via `go:embed` and applied on startup
 
@@ -14,7 +14,7 @@ Full-stack application: Go (net/http) backend, React (Vite + TypeScript + Tailwi
 
 - `cmd/api/` - Application entry point (routing, server, graceful shutdown)
 - `internal/config/` - Environment configuration
-- `internal/handlers/` - HTTP handlers (JSON responses)
+- `internal/handlers/` - HTTP handlers (Gin, JSON responses)
 - `internal/repository/` - Database queries (pgx/v5)
 - `internal/models/` - Data structures
 - `migrations/` - SQL migration files (numbered `NNNNNN_name.up.sql` / `.down.sql`)
@@ -26,7 +26,7 @@ Full-stack application: Go (net/http) backend, React (Vite + TypeScript + Tailwi
 ## Commands
 
 ```bash
-make dev                   # Run backend (dev mode)
+make dev                   # Run backend: applies pending migrations, then serves
 cd web && npm run dev      # Run frontend (Vite dev server, proxies /api to :8080)
 make db-shell              # psql shell
 make build                 # Production build (web/dist + bin/api)
