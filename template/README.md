@@ -90,7 +90,7 @@ make build   # builds web/dist and bin/api
 make start   # single binary serves API + frontend on :8080
 ```
 
-The binary is fully self-contained: migrations are embedded, and the frontend is served from `web/dist`. Deploy `bin/api` + `web/dist` together, set `DATABASE_URL` (and optionally `PORT`, `CORS_ORIGINS`), and you're done.
+The binary is fully self-contained: migrations are embedded, and the frontend is served from `web/dist`. Deploy `bin/api` + `web/dist` together, set the `DB_*` variables or a single `DATABASE_URL` (and optionally `PORT`, `CORS_ORIGINS`), and you're done.
 
 ## Adding a migration
 

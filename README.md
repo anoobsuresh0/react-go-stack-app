@@ -49,7 +49,7 @@ my-app/
 ├── docker-compose.yml       # PostgreSQL 18 (Docker mode only)
 ├── cmd/api/                 # entry point: routing, server, graceful shutdown
 ├── internal/
-│   ├── config/              # env configuration (DATABASE_URL, PORT, ...)
+│   ├── config/              # env configuration (DB_HOST/DB_USER/... or DATABASE_URL)
 │   ├── database/            # pgx pool + transactional migration runner
 │   ├── handlers/            # HTTP handlers (Gin, JSON)
 │   ├── models/
@@ -65,7 +65,7 @@ make build   # web/dist + a single static Go binary (bin/api)
 make start   # binary serves the API and the frontend on :8080
 ```
 
-Migrations are embedded via `go:embed`, so the binary + `web/dist` + `DATABASE_URL` is all a deploy needs.
+Migrations are embedded via `go:embed`, so the binary + `web/dist` + the `DB_*` env vars (or a single `DATABASE_URL`) is all a deploy needs.
 
 ## Requirements
 
