@@ -1,85 +1,77 @@
 # react-go-stack-app
 
-Create a full-stack Go + React + PostgreSQL application with Docker.
+Scaffold a production-ready full-stack application in seconds:
+
+- **Backend:** Go (`net/http`, Go 1.25) + pgx/v5, graceful shutdown, embedded SQL migrations
+- **Frontend:** React 19 + Vite 8 + TypeScript + Tailwind CSS 4, optional shadcn/ui
+- **Database:** PostgreSQL 18 — in Docker (managed for you) or your local install
 
 ## Usage
 
 ```bash
-npx react-go-stack-app my-app
+npx @anoobsuresh0/react-go-stack-app my-app
 ```
 
-Or install globally:
+The CLI asks two questions:
 
-```bash
-npm install -g react-go-stack-app
-react-go-stack-app my-app
-```
+1. **Where should PostgreSQL 18 run?** — Docker (a `docker-compose.yml` with just the database) or a local PostgreSQL installation
+2. **Include shadcn/ui components?** — yes, or plain Tailwind
 
-## What's Included
-
-Generated projects include:
-
-- **Go Backend** with Gin framework
-  - PostgreSQL database
-  - Counter example API
-  - Health check endpoint
-
-- **React Frontend** with TypeScript
-  - Vite build tool
-  - Tailwind CSS
-  - shadcn/ui components
-  - Axios for API calls
-
-- **Docker Configuration**
-  - Local development setup
-  - Production setup with Traefik reverse proxy
-  - SSL/TLS with Let's Encrypt
-  - Staging environment
-
-- **Developer Experience**
-  - Makefile for common tasks
-  - CLAUDE.md for AI assistance
-  - Clean project structure
-
-## Interactive Prompts
-
-The CLI will ask you about:
-
-- Project name and description
-- Application title and abbreviation
-- Production and staging domains
-- Database name
-
-## After Generation
+Then:
 
 ```bash
 cd my-app
+make dev          # starts the database (Docker mode) + the Go backend
 
-# Set up the database
-# CREATE TABLE counters (id SERIAL PRIMARY KEY, value INTEGER NOT NULL DEFAULT 0);
-# INSERT INTO counters (value) VALUES (0);
-
-# Configure backend
-cd backend
-cp .env.example .env
-# Edit .env with your database connection
-
-# Start services
-docker compose -f local.yml up
-
-# In another terminal, start frontend
-cd frontend
+# in a second terminal
+cd my-app/web
 npm install
-npm run dev
-
-# Open http://localhost:5173
+npm run dev       # Vite dev server on http://localhost:5173, /api proxied to :8080
 ```
+
+Open http://localhost:5173 — the demo is a counter persisted in PostgreSQL. Migrations run automatically when the backend starts.
+
+### Non-interactive
+
+```bash
+npx @anoobsuresh0/react-go-stack-app my-app --db docker --shadcn      # or --db local / --no-shadcn
+npx @anoobsuresh0/react-go-stack-app my-app -y                        # defaults: Docker + shadcn/ui
+```
+
+`--skip-git` skips git initialization.
+
+## Generated project
+
+```
+my-app/
+├── Makefile                 # dev / build / start / db targets
+├── docker-compose.yml       # PostgreSQL 18 (Docker mode only)
+├── cmd/api/                 # entry point: routing, server, graceful shutdown
+├── internal/
+│   ├── config/              # env configuration (DATABASE_URL, PORT, ...)
+│   ├── database/            # pgx pool + transactional migration runner
+│   ├── handlers/            # HTTP handlers (JSON)
+│   ├── middleware/          # CORS
+│   ├── models/
+│   └── repository/          # database queries
+├── migrations/              # SQL migrations, embedded into the binary
+└── web/                     # React + Vite + TS + Tailwind (+ shadcn/ui)
+```
+
+### Production
+
+```bash
+make build   # web/dist + a single static Go binary (bin/api)
+make start   # binary serves the API and the frontend on :8080
+```
+
+Migrations are embedded via `go:embed`, so the binary + `web/dist` + `DATABASE_URL` is all a deploy needs.
 
 ## Requirements
 
 - Node.js 18+
-- Docker and Docker Compose
-- PostgreSQL database
+- Go 1.25+
+- Docker (only for the Docker database mode) or PostgreSQL 18 installed locally
 
 ## License
 

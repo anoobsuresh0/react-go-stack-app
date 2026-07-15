@@ -1,70 +1,58 @@
-.PHONY: dev dev-build dev-down build-frontend
+# {{DOCKER_DB_BLOCK_START}}
+.PHONY: dev build build-web build-api start tidy clean db-up db-down db-shell db-reset
 
-# Development
-dev:
-	docker compose up
+# Start the database (Docker), then run the backend with live output.
+dev: db-up
+	go run ./cmd/api
 
-dev-build:
-	docker compose up --build
+# Database
+db-up:
+	docker compose up -d --wait db
 
-dev-down:
+db-down:
 	docker compose down
 
-# Frontend
-build-frontend:
+db-shell:
+	docker compose exec db psql -U postgres -d {{DB_NAME}}
+
+# Drop everything (including data) and start fresh
+db-reset:
+	docker compose down -v
+	docker compose up -d --wait db
+# {{DOCKER_DB_BLOCK_END}}
+# {{LOCAL_DB_BLOCK_START}}
+.PHONY: dev build build-web build-api start tidy clean db-create db-drop db-shell
+
+# Run the backend (expects PostgreSQL to be running locally).
+dev:
+	go run ./cmd/api
+
+# Database
+db-create:
+	createdb {{DB_NAME}} 2>/dev/null || echo "database {{DB_NAME}} already exists"
+
+db-drop:
+	dropdb --if-exists {{DB_NAME}}
+
+db-shell:
+	psql {{DB_NAME}}
+# {{LOCAL_DB_BLOCK_END}}
+
+# Production build: frontend assets + a single static Go binary that serves them.
+build: build-web build-api
+
+build-web:
 	cd web && npm install && npm run build
 
-# Go
-run:
-	go run ./cmd/api
+build-api:
+	CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/api ./cmd/api
+
+# Run the production build (serves the frontend from web/dist)
+start:
+	ENV=production ./bin/api
 
 tidy:
 	go mod tidy
 
-# {{FULL_DOCKER_BLOCK_START}}
-# Staging
-deploy-staging:
-	docker compose -f docker-compose.staging.yml up -d --build
-
-staging-down:
-	docker compose -f docker-compose.staging.yml down
-
-staging-logs:
-	docker compose -f docker-compose.staging.yml logs -f
-
-# Production
-promote:
-	docker tag {{PROJECT_NAME_SNAKE}}:staging {{PROJECT_NAME_SNAKE}}:production
-
-deploy-production:
-	docker compose -f docker-compose.prod.yml up -d
-
-production-down:
-	docker compose -f docker-compose.prod.yml down
-
-production-logs:
-	docker compose -f docker-compose.prod.yml logs -f
-
-# Traefik
-traefik-up:
-	docker compose -f docker-compose.traefik.yml up -d
-
-traefik-down:
-	docker compose -f docker-compose.traefik.yml down
-
-# Database
-db-shell:
-	docker compose exec db psql -U postgres -d {{DB_NAME}}
-
-backup-staging:
-	docker compose -f docker-compose.staging.yml exec db-staging pg_dump -U $${STAGING_POSTGRES_USER} $${STAGING_POSTGRES_DB} > backup-staging-$$(date +%Y%m%d).sql
-
-backup-production:
-	docker compose -f docker-compose.prod.yml exec db-prod pg_dump -U $${PROD_POSTGRES_USER} $${PROD_POSTGRES_DB} > backup-production-$$(date +%Y%m%d).sql
-
-# Clean
 clean:
-	docker compose down -v
-	docker compose -f docker-compose.staging.yml down -v 2>/dev/null || true
-	docker compose -f docker-compose.prod.yml down -v 2>/dev/null || true
-# {{FULL_DOCKER_BLOCK_END}}
+	rm -rf bin web/dist

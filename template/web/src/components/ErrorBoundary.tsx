@@ -29,10 +29,10 @@ export class ErrorBoundary extends Component<Props, State> {
       return this.props.fallback || (
         <div className="flex min-h-screen items-center justify-center">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-destructive">Something went wrong</h1>
-            <p className="mt-2 text-muted-foreground">{this.state.error?.message}</p>
+            <h1 className="text-2xl font-bold text-red-600 dark:text-red-400">Something went wrong</h1>
+            <p className="mt-2 text-zinc-500 dark:text-zinc-400">{this.state.error?.message}</p>
             <button
-              className="mt-4 rounded-md bg-primary px-4 py-2 text-primary-foreground"
+              className="mt-4 rounded-lg border border-zinc-300 px-4 py-2 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
               onClick={() => window.location.reload()}
             >
               Reload page

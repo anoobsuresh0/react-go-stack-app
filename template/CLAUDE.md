@@ -2,48 +2,40 @@
 
 ## Project Overview
 
-{{DESCRIPTION}}
-
-Full-stack application with Go backend and React frontend.
+Full-stack application: Go (net/http) backend, React (Vite + TypeScript + Tailwind) frontend, PostgreSQL 18.
 
 ## Architecture
 
-- **Backend:** Go with clean architecture (handlers → repository → database)
-- **Frontend:** React 19 + TypeScript + Vite in `web/` directory
-- **Database:** PostgreSQL with pgx-based auto-migrations
+- **Backend:** Go with clean layering (handlers → repository → database), pgx/v5 pool
+- **Frontend:** React + TypeScript + Vite in `web/`, Tailwind CSS v4
+- **Database:** PostgreSQL 18; SQL migrations embedded via `go:embed` and applied on startup
 
 ## Key Directories
 
-- `cmd/api/` - Application entry point
-- `internal/` - Backend business logic
-- `internal/handlers/` - HTTP handlers
+- `cmd/api/` - Application entry point (routing, server, graceful shutdown)
+- `internal/config/` - Environment configuration
+- `internal/handlers/` - HTTP handlers (JSON responses)
 - `internal/repository/` - Database queries (pgx/v5)
 - `internal/models/` - Data structures
-- `migrations/` - SQL migration files (up/down pairs)
-- `web/src/` - React frontend source
-- `web/src/features/` - Feature modules
-- `web/src/components/ui/` - shadcn/ui components
+- `migrations/` - SQL migration files (numbered `NNNNNN_name.up.sql` / `.down.sql`)
+- `web/src/features/` - Frontend feature modules
+<!-- {{SHADCN_BLOCK_START}} -->
+- `web/src/components/ui/` - shadcn/ui components (`cd web && npx shadcn@latest add <component>`)
+<!-- {{SHADCN_BLOCK_END}} -->
 
 ## Commands
 
 ```bash
-# Development
-docker compose up          # Start DB + backend
-cd web && npm run dev      # Start frontend
-
-# Database
-make db-shell              # Connect to PostgreSQL
-
-# Build
-make build-frontend        # Build React for production
-go build ./cmd/api         # Build Go binary
+make dev                   # Run backend (dev mode)
+cd web && npm run dev      # Run frontend (Vite dev server, proxies /api to :8080)
+make db-shell              # psql shell
+make build                 # Production build (web/dist + bin/api)
+go vet ./...               # Static checks
 ```
 
 ## Conventions
 
-- Go handlers return JSON responses
-- Frontend uses Axios client at `web/src/lib/api/client.ts`
-- All API routes prefixed with `/api/`
-- Database migrations in `migrations/` directory (numbered sequentially)
-- React components use shadcn/ui from `web/src/components/ui/`
-- Feature code organized by domain in `web/src/features/`
+- All API routes are prefixed with `/api/` and return JSON
+- Frontend calls the API through `web/src/features/<feature>/api.ts` using `fetch` (Vite proxies `/api` in dev)
+- New migrations: next sequential number, always with a matching `.down.sql`
+- Configuration comes from environment variables (`.env` is loaded in dev); see `internal/config/config.go`

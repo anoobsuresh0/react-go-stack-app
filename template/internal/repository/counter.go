@@ -20,32 +20,23 @@ func NewCounterRepository(db *pgxpool.Pool) *CounterRepository {
 func (r *CounterRepository) Get(ctx context.Context) (*models.Counter, error) {
 	var c models.Counter
 	err := r.db.QueryRow(ctx,
-		"SELECT id, value, created_at, updated_at FROM counters LIMIT 1",
-	).Scan(&c.ID, &c.Value, &c.CreatedAt, &c.UpdatedAt)
+		`SELECT value, updated_at FROM counter WHERE id = 1`,
+	).Scan(&c.Value, &c.UpdatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get counter: %w", err)
+		return nil, fmt.Errorf("get counter: %w", err)
 	}
 	return &c, nil
 }
 
-func (r *CounterRepository) Increment(ctx context.Context) (*models.Counter, error) {
+// Adjust atomically adds delta to the counter and returns the new state.
+func (r *CounterRepository) Adjust(ctx context.Context, delta int64) (*models.Counter, error) {
 	var c models.Counter
 	err := r.db.QueryRow(ctx,
-		"UPDATE counters SET value = value + 1, updated_at = NOW() WHERE id = (SELECT id FROM counters LIMIT 1) RETURNING id, value, created_at, updated_at",
-	).Scan(&c.ID, &c.Value, &c.CreatedAt, &c.UpdatedAt)
+		`UPDATE counter SET value = value + $1, updated_at = NOW() WHERE id = 1 RETURNING value, updated_at`,
+		delta,
+	).Scan(&c.Value, &c.UpdatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to increment counter: %w", err)
-	}
-	return &c, nil
-}
-
-func (r *CounterRepository) Decrement(ctx context.Context) (*models.Counter, error) {
-	var c models.Counter
-	err := r.db.QueryRow(ctx,
-		"UPDATE counters SET value = value - 1, updated_at = NOW() WHERE id = (SELECT id FROM counters LIMIT 1) RETURNING id, value, created_at, updated_at",
-	).Scan(&c.ID, &c.Value, &c.CreatedAt, &c.UpdatedAt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decrement counter: %w", err)
+		return nil, fmt.Errorf("adjust counter: %w", err)
 	}
 	return &c, nil
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"{{PROJECT_NAME}}/internal/repository"
@@ -18,32 +19,39 @@ func NewCounterHandler(repo *repository.CounterRepository) *CounterHandler {
 func (h *CounterHandler) GetCounter(w http.ResponseWriter, r *http.Request) {
 	counter, err := h.repo.Get(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to get counter"})
+		log.Printf("get counter: %v", err)
+		writeError(w, http.StatusInternalServerError, "Failed to get counter")
 		return
 	}
 	writeJSON(w, http.StatusOK, counter)
 }
 
 func (h *CounterHandler) IncrementCounter(w http.ResponseWriter, r *http.Request) {
-	counter, err := h.repo.Increment(r.Context())
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to increment counter"})
-		return
-	}
-	writeJSON(w, http.StatusOK, counter)
+	h.adjust(w, r, 1)
 }
 
 func (h *CounterHandler) DecrementCounter(w http.ResponseWriter, r *http.Request) {
-	counter, err := h.repo.Decrement(r.Context())
+	h.adjust(w, r, -1)
+}
+
+func (h *CounterHandler) adjust(w http.ResponseWriter, r *http.Request, delta int64) {
+	counter, err := h.repo.Adjust(r.Context(), delta)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to decrement counter"})
+		log.Printf("adjust counter by %d: %v", delta, err)
+		writeError(w, http.StatusInternalServerError, "Failed to update counter")
 		return
 	}
 	writeJSON(w, http.StatusOK, counter)
 }
 
-func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("encode response: %v", err)
+	}
+}
+
+func writeError(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, map[string]string{"error": message})
 }

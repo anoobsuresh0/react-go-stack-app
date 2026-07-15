@@ -7,7 +7,7 @@ import type { ProjectAnswers } from './prompts.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Files that should be processed for placeholder replacement
+// Files that should be processed for placeholder/marker replacement
 const TEMPLATE_EXTENSIONS = [
   '.go',
   '.ts',
@@ -22,117 +22,83 @@ const TEMPLATE_EXTENSIONS = [
   '.sh',
   '.html',
   '.css',
-  '.env.example',
   '.mod',
 ];
 
-// Directories to skip
-const SKIP_DIRS = ['node_modules', '.git', 'dist', 'build', '.next'];
+const SPECIAL_FILES = ['.env.example', '_gitignore', 'Makefile'];
 
-interface Placeholders {
-  [key: string]: string;
-}
+// Dependencies that only exist to support shadcn/ui
+const SHADCN_DEPENDENCIES = [
+  '@radix-ui/react-slot',
+  'class-variance-authority',
+  'clsx',
+  'lucide-react',
+  'tailwind-merge',
+];
 
-function buildPlaceholders(answers: ProjectAnswers): Placeholders {
-  const snakeCase = answers.projectName.replace(/-/g, '_');
-  const pascalCase = answers.projectName
-    .split(/[-_]/)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join('');
+type Condition = (answers: ProjectAnswers) => boolean;
 
+// Conditional markers: {{<NAME>_BLOCK_START}}/{{<NAME>_BLOCK_END}} keep or drop
+// whole blocks, {{<NAME>_ONLY}} keeps or drops single lines.
+const CONDITIONS: Record<string, Condition> = {
+  SHADCN: a => a.useShadcn,
+  NOSHADCN: a => !a.useShadcn,
+  DOCKER_DB: a => a.database === 'docker',
+  LOCAL_DB: a => a.database === 'local',
+};
+
+const BLOCK_START = /\{\{([A-Z_]+)_BLOCK_START\}\}/;
+const BLOCK_END = /\{\{([A-Z_]+)_BLOCK_END\}\}/;
+const LINE_ONLY = /\{\{([A-Z_]+)_ONLY\}\}/;
+// Strips the marker comment itself from a kept line: `// {{X_ONLY}}`,
+// `# {{X_ONLY}}` or `/* {{X_ONLY}} */`
+const LINE_MARKER_COMMENT = /\s*(?:\/\/|#|\/\*)\s*\{\{[A-Z_]+_ONLY\}\}\s*(?:\*\/)?\s*$/;
+
+function buildPlaceholders(answers: ProjectAnswers): Record<string, string> {
   return {
     '{{PROJECT_NAME}}': answers.projectName,
-    '{{PROJECT_NAME_SNAKE}}': snakeCase,
-    '{{PROJECT_NAME_PASCAL}}': pascalCase,
+    '{{PROJECT_NAME_SNAKE}}': answers.projectName.replace(/-/g, '_'),
     '{{APP_TITLE}}': answers.appTitle,
-    '{{APP_ABBREVIATION}}': answers.appAbbreviation,
-    '{{DESCRIPTION}}': answers.description,
-    '{{PRODUCTION_DOMAIN}}': answers.productionDomain,
-    '{{STAGING_DOMAIN}}': answers.stagingDomain,
     '{{DB_NAME}}': answers.dbName,
   };
 }
 
 function shouldProcessFile(filename: string): boolean {
-  // Check if it's a special file that should be processed
-  if (filename === '.env.example' || filename === '.gitignore' || filename === 'Makefile' || filename === 'Dockerfile') {
+  if (SPECIAL_FILES.includes(filename)) {
     return true;
   }
   return TEMPLATE_EXTENSIONS.some(ext => filename.endsWith(ext));
 }
 
+function resolveCondition(name: string, answers: ProjectAnswers): boolean {
+  const condition = CONDITIONS[name];
+  if (!condition) {
+    throw new Error(`Unknown template marker condition: ${name}`);
+  }
+  return condition(answers);
+}
+
 function processMarkers(content: string, answers: ProjectAnswers): string {
-  const lines = content.split('\n');
   const result: string[] = [];
-  let skipBlock = false;
+  let skipDepth = 0;
 
-  for (const line of lines) {
-    // Block markers - check for START/END patterns
-    if (line.includes('{{AUTH_BLOCK_START}}')) {
-      if (!answers.useAuth) skipBlock = true;
-      continue; // Always remove the marker line itself
-    }
-    if (line.includes('{{AUTH_BLOCK_END}}')) {
-      skipBlock = false;
+  for (const line of content.split('\n')) {
+    const start = line.match(BLOCK_START);
+    if (start) {
+      if (skipDepth > 0 || !resolveCondition(start[1], answers)) skipDepth++;
       continue;
     }
-    if (line.includes('{{REDUX_BLOCK_START}}')) {
-      if (answers.stateManagement !== 'redux') skipBlock = true;
+    const end = line.match(BLOCK_END);
+    if (end) {
+      if (skipDepth > 0) skipDepth--;
       continue;
     }
-    if (line.includes('{{REDUX_BLOCK_END}}')) {
-      skipBlock = false;
-      continue;
-    }
-    if (line.includes('{{NOAUTH_BLOCK_START}}')) {
-      if (answers.useAuth) skipBlock = true;
-      continue;
-    }
-    if (line.includes('{{NOAUTH_BLOCK_END}}')) {
-      skipBlock = false;
-      continue;
-    }
-    if (line.includes('{{NOREDUX_BLOCK_START}}')) {
-      if (answers.stateManagement === 'redux') skipBlock = true;
-      continue;
-    }
-    if (line.includes('{{NOREDUX_BLOCK_END}}')) {
-      skipBlock = false;
-      continue;
-    }
-    if (line.includes('{{FULL_DOCKER_BLOCK_START}}')) {
-      if (answers.dockerEnv !== 'full') skipBlock = true;
-      continue;
-    }
-    if (line.includes('{{FULL_DOCKER_BLOCK_END}}')) {
-      skipBlock = false;
-      continue;
-    }
+    if (skipDepth > 0) continue;
 
-    if (skipBlock) continue;
-
-    // Line markers - strip entire line if condition not met, remove marker text if met
-    if (line.includes('{{GIN_ONLY}}')) {
-      if (answers.goFramework === 'gin') {
-        result.push(line.replace(/\s*(?:\/\/|#)\s*\{\{GIN_ONLY\}\}/, ''));
-      }
-      continue;
-    }
-    if (line.includes('{{STDLIB_ONLY}}')) {
-      if (answers.goFramework === 'stdlib') {
-        result.push(line.replace(/\s*(?:\/\/|#)\s*\{\{STDLIB_ONLY\}\}/, ''));
-      }
-      continue;
-    }
-    if (line.includes('{{AUTH_ONLY}}')) {
-      if (answers.useAuth) {
-        result.push(line.replace(/\s*(?:\/\/|#)\s*\{\{AUTH_ONLY\}\}/, ''));
-      }
-      continue;
-    }
-    if (line.includes('{{REDUX_ONLY}}')) {
-      if (answers.stateManagement === 'redux') {
-        result.push(line.replace(/\s*(?:\/\/|#)\s*\{\{REDUX_ONLY\}\}/, ''));
+    const only = line.match(LINE_ONLY);
+    if (only) {
+      if (resolveCondition(only[1], answers)) {
+        result.push(line.replace(LINE_MARKER_COMMENT, ''));
       }
       continue;
     }
@@ -143,185 +109,112 @@ function processMarkers(content: string, answers: ProjectAnswers): string {
   return result.join('\n');
 }
 
-async function processFile(
-  filePath: string,
-  placeholders: Placeholders,
-  answers: ProjectAnswers
-): Promise<void> {
+async function processFile(filePath: string, placeholders: Record<string, string>, answers: ProjectAnswers): Promise<void> {
   let content = await fs.readFile(filePath, 'utf-8');
 
   for (const [placeholder, value] of Object.entries(placeholders)) {
     content = content.split(placeholder).join(value);
   }
-
   content = processMarkers(content, answers);
 
   await fs.writeFile(filePath, content);
 }
 
-async function processDirectory(
-  dirPath: string,
-  placeholders: Placeholders,
-  answers: ProjectAnswers
-): Promise<void> {
+// Template-relative paths that are only copied for certain answers
+function buildExcludes(answers: ProjectAnswers): string[] {
+  const excludes: string[] = [];
+
+  if (answers.database === 'local') {
+    excludes.push('docker-compose.yml');
+  }
+
+  if (answers.useShadcn) {
+    excludes.push('web/src/features/counter/Counter-plain.tsx');
+  } else {
+    excludes.push(
+      'web/components.json',
+      'web/src/components/ui',
+      'web/src/lib/utils.ts',
+      'web/src/features/counter/Counter-shadcn.tsx'
+    );
+  }
+
+  return excludes;
+}
+
+// Renames applied after copy (npm strips .gitignore from packages; variant
+// files carry a suffix so both flavors can live in the template)
+const RENAMES: Array<[string, string]> = [
+  ['_gitignore', '.gitignore'],
+  ['web/_gitignore', 'web/.gitignore'],
+  ['web/src/features/counter/Counter-shadcn.tsx', 'web/src/features/counter/Counter.tsx'],
+  ['web/src/features/counter/Counter-plain.tsx', 'web/src/features/counter/Counter.tsx'],
+];
+
+async function collectFiles(dirPath: string): Promise<string[]> {
   const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry.name);
-
-    if (entry.isDirectory()) {
-      if (!SKIP_DIRS.includes(entry.name)) {
-        await processDirectory(fullPath, placeholders, answers);
+  const nested = await Promise.all(
+    entries.map(async entry => {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        return collectFiles(fullPath);
       }
-    } else if (shouldProcessFile(entry.name)) {
-      await processFile(fullPath, placeholders, answers);
-    }
-  }
+      return shouldProcessFile(entry.name) ? [fullPath] : [];
+    })
+  );
+  return nested.flat();
 }
 
-async function removeIfExists(filePath: string): Promise<void> {
-  if (await fs.pathExists(filePath)) {
-    await fs.remove(filePath);
+async function pruneShadcnDependencies(projectPath: string): Promise<void> {
+  const pkgPath = path.join(projectPath, 'web', 'package.json');
+  const pkg = await fs.readJson(pkgPath);
+  for (const dep of SHADCN_DEPENDENCIES) {
+    delete pkg.dependencies?.[dep];
   }
-}
-
-async function handleVariants(projectPath: string, answers: ProjectAnswers): Promise<void> {
-  await walkAndHandleVariants(projectPath, answers);
-}
-
-async function walkAndHandleVariants(dirPath: string, answers: ProjectAnswers): Promise<void> {
-  const entries = await fs.readdir(dirPath, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry.name);
-
-    if (entry.isDirectory()) {
-      if (!SKIP_DIRS.includes(entry.name)) {
-        await walkAndHandleVariants(fullPath, answers);
-      }
-      continue;
-    }
-
-    const name = entry.name;
-
-    // Framework variants: -gin vs -stdlib
-    if (name.includes('-gin.') || name.includes('-gin-')) {
-      if (answers.goFramework === 'gin') {
-        const newName = name.replace(/-gin/, '');
-        await fs.rename(fullPath, path.join(dirPath, newName));
-      } else {
-        await fs.remove(fullPath);
-      }
-      continue;
-    }
-    if (name.includes('-stdlib.') || name.includes('-stdlib-')) {
-      if (answers.goFramework === 'stdlib') {
-        const newName = name.replace(/-stdlib/, '');
-        await fs.rename(fullPath, path.join(dirPath, newName));
-      } else {
-        await fs.remove(fullPath);
-      }
-      continue;
-    }
-
-    // State management variants: -redux vs -simple
-    if (name.includes('-redux.') || name.includes('-redux-')) {
-      if (answers.stateManagement === 'redux') {
-        const newName = name.replace(/-redux/, '');
-        await fs.rename(fullPath, path.join(dirPath, newName));
-      } else {
-        await fs.remove(fullPath);
-      }
-      continue;
-    }
-    if (name.includes('-simple.') || name.includes('-simple-')) {
-      if (answers.stateManagement === 'simple') {
-        const newName = name.replace(/-simple/, '');
-        await fs.rename(fullPath, path.join(dirPath, newName));
-      } else {
-        await fs.remove(fullPath);
-      }
-      continue;
-    }
-  }
-}
-
-async function handleConditionals(projectPath: string, answers: ProjectAnswers): Promise<void> {
-  if (!answers.useAuth) {
-    await removeIfExists(path.join(projectPath, 'internal/handlers/auth.go'));
-    await removeIfExists(path.join(projectPath, 'internal/middleware/auth.go'));
-    await removeIfExists(path.join(projectPath, 'internal/models/user.go'));
-    await removeIfExists(path.join(projectPath, 'internal/repository/auth.go'));
-    await removeIfExists(path.join(projectPath, 'migrations/000002_create_users_sessions.up.sql'));
-    await removeIfExists(path.join(projectPath, 'migrations/000002_create_users_sessions.down.sql'));
-    await removeIfExists(path.join(projectPath, 'web/src/features/auth'));
-  }
-
-  if (answers.stateManagement !== 'redux') {
-    await removeIfExists(path.join(projectPath, 'web/src/app'));
-    // Remove redux dependencies from package.json
-    const pkgPath = path.join(projectPath, 'web', 'package.json');
-    if (await fs.pathExists(pkgPath)) {
-      const pkg = await fs.readJson(pkgPath);
-      delete pkg.dependencies['@reduxjs/toolkit'];
-      delete pkg.dependencies['react-redux'];
-      await fs.writeJson(pkgPath, pkg, { spaces: 2 });
-    }
-  }
-
-  if (answers.dockerEnv !== 'full') {
-    await removeIfExists(path.join(projectPath, 'docker-compose.staging.yml'));
-    await removeIfExists(path.join(projectPath, 'docker-compose.prod.yml'));
-    await removeIfExists(path.join(projectPath, 'docker-compose.traefik.yml'));
-    await removeIfExists(path.join(projectPath, 'traefik'));
-  }
+  await fs.writeJson(pkgPath, pkg, { spaces: 2 });
+  await fs.appendFile(pkgPath, '\n');
 }
 
 export async function createProject(answers: ProjectAnswers): Promise<void> {
-  const spinner = ora('Creating project structure...').start();
+  const spinner = ora('Creating project...').start();
 
   try {
-    // 1. Find and copy template directory
     let templatePath = path.join(__dirname, '..', 'template');
     if (!await fs.pathExists(templatePath)) {
       templatePath = path.join(__dirname, '..', '..', 'template');
     }
-
     if (!await fs.pathExists(templatePath)) {
       throw new Error(`Template not found at ${templatePath}`);
     }
 
+    // 1. Copy the template, skipping files the chosen options don't need
     spinner.text = 'Copying template files...';
-    await fs.copy(templatePath, answers.projectPath);
+    const excludes = buildExcludes(answers).map(p => path.join(templatePath, p));
+    await fs.copy(templatePath, answers.projectPath, {
+      filter: src => !excludes.includes(src),
+    });
 
-    // 2. Process placeholders in all files
+    // 2. Rename special/variant files to their final names
+    for (const [from, to] of RENAMES) {
+      const fromPath = path.join(answers.projectPath, from);
+      if (await fs.pathExists(fromPath)) {
+        await fs.rename(fromPath, path.join(answers.projectPath, to));
+      }
+    }
+
+    // 3. Replace placeholders and resolve conditional markers in parallel
     spinner.text = 'Processing template files...';
     const placeholders = buildPlaceholders(answers);
-    await processDirectory(answers.projectPath, placeholders, answers);
+    const files = await collectFiles(answers.projectPath);
+    await Promise.all(files.map(file => processFile(file, placeholders, answers)));
 
-    // 3. Markers are processed as part of processDirectory (step 2)
-    // processMarkers is called inside processFile
-
-    // 4. Handle variant file renaming/deletion
-    spinner.text = 'Handling variant files...';
-    await handleVariants(answers.projectPath, answers);
-
-    // 5. Handle conditional file removal
-    spinner.text = 'Removing unused files...';
-    await handleConditionals(answers.projectPath, answers);
-
-    // 6. Rename _gitignore to .gitignore (npm doesn't include .gitignore files)
-    const rootGitignore = path.join(answers.projectPath, '_gitignore');
-    if (await fs.pathExists(rootGitignore)) {
-      await fs.rename(rootGitignore, path.join(answers.projectPath, '.gitignore'));
+    // 4. shadcn-only npm dependencies are pruned programmatically since JSON
+    //    can't carry comment markers
+    if (!answers.useShadcn) {
+      await pruneShadcnDependencies(answers.projectPath);
     }
 
-    const webGitignore = path.join(answers.projectPath, 'web', '_gitignore');
-    if (await fs.pathExists(webGitignore)) {
-      await fs.rename(webGitignore, path.join(answers.projectPath, 'web', '.gitignore'));
-    }
-
-    spinner.succeed('Project created successfully!');
+    spinner.succeed('Project created!');
   } catch (error) {
     spinner.fail('Failed to create project');
     throw error;

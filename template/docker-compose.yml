@@ -1,26 +1,4 @@
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME={{DB_NAME}}
-      - DB_SSLMODE=disable
-      - PORT=8080
-      - STATIC_PATH=./static
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - {{PROJECT_NAME_SNAKE}}-network
-
   db:
     image: postgres:18-alpine
     environment:
@@ -30,19 +8,15 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 18+ images keep PGDATA in a versioned subdirectory, so the
+      # volume mounts at /var/lib/postgresql (not .../data)
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d {{DB_NAME}}"]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    networks:
-      - {{PROJECT_NAME_SNAKE}}-network
-
-networks:
-  {{PROJECT_NAME_SNAKE}}-network:
-    driver: bridge
 
 volumes:
   postgres_data:

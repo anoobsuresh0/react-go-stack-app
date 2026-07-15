@@ -1,23 +1,24 @@
-import { apiClient } from '@/lib/api/client'
-
 export interface Counter {
-  id: string
   value: number
-  created_at: string
   updated_at: string
 }
 
-export async function getCounter(): Promise<Counter> {
-  const response = await apiClient.get<Counter>('/counter')
-  return response.data
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`/api${path}`, init)
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`)
+  }
+  return response.json() as Promise<T>
 }
 
-export async function incrementCounter(): Promise<Counter> {
-  const response = await apiClient.post<Counter>('/counter/increment')
-  return response.data
+export function getCounter(): Promise<Counter> {
+  return request<Counter>('/counter')
 }
 
-export async function decrementCounter(): Promise<Counter> {
-  const response = await apiClient.post<Counter>('/counter/decrement')
-  return response.data
+export function incrementCounter(): Promise<Counter> {
+  return request<Counter>('/counter/increment', { method: 'POST' })
+}
+
+export function decrementCounter(): Promise<Counter> {
+  return request<Counter>('/counter/decrement', { method: 'POST' })
 }

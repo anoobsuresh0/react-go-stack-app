@@ -2,7 +2,7 @@
 node_modules/
 
 # Build
-dist/
+bin/
 web/dist/
 
 # Environment
@@ -12,10 +12,6 @@ web/dist/
 
 # Go
 *.exe
-*.exe~
-*.dll
-*.so
-*.dylib
 *.test
 *.out
 
@@ -23,7 +19,6 @@ web/dist/
 .idea/
 .vscode/
 *.swp
-*.swo
 *~
 
 # OS
@@ -33,5 +28,9 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
-# Backups
-*.sql
+# Database backups (migrations/ stays tracked)
+backup-*.sql
+
+# Logs
+logs/
+*.log

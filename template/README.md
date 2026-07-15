@@ -1,113 +1,104 @@
 # {{APP_TITLE}}
 
-{{DESCRIPTION}}
+Full-stack application: Go (net/http) backend, React (Vite + TypeScript + Tailwind) frontend, PostgreSQL 18.
 
-## Tech Stack
+## Quick start
 
-- **Backend:** Go 1.25 with PostgreSQL (pgx/v5)
-- **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS + shadcn/ui
-- **Database:** PostgreSQL 18
-- **Containerization:** Docker with multi-stage builds
-
-## Quick Start
-
-### Prerequisites
-
-- [Docker](https://www.docker.com/) and Docker Compose
-- [Node.js](https://nodejs.org/) 22+
-- [Go](https://golang.org/) 1.25+
-
-### Development
-
-1. **Start the database and backend:**
-
+<!-- {{DOCKER_DB_BLOCK_START}} -->
 ```bash
-cp .env.example .env
-docker compose up
-```
+# Terminal 1 — start PostgreSQL (Docker) + the backend
+make dev
 
-2. **Start the frontend (in a new terminal):**
-
-```bash
+# Terminal 2 — start the frontend
 cd web
 npm install
 npm run dev
 ```
-
-3. **Initialize Go modules:**
-
+<!-- {{DOCKER_DB_BLOCK_END}} -->
+<!-- {{LOCAL_DB_BLOCK_START}} -->
 ```bash
-go mod tidy
+# One-time: create the database (PostgreSQL 18 must be running locally)
+make db-create
+
+# Terminal 1 — start the backend
+make dev
+
+# Terminal 2 — start the frontend
+cd web
+npm install
+npm run dev
 ```
+<!-- {{LOCAL_DB_BLOCK_END}} -->
 
-4. **Open your app:** [http://localhost:5173](http://localhost:5173)
+Open http://localhost:5173. Database migrations run automatically when the backend starts.
 
-## Project Structure
+Configuration lives in `.env` (optional — sensible defaults are built in). Copy `.env.example` to `.env` to customize.
+
+## Project structure
 
 ```
-{{PROJECT_NAME}}/
-├── cmd/api/              # Go application entry point
+├── Makefile                # dev / build / db targets
+├── cmd/api/                # application entry point
 ├── internal/
-│   ├── config/           # Environment configuration
-│   ├── database/         # Database connection & migrations
-│   ├── handlers/         # HTTP request handlers
-│   ├── middleware/        # CORS, auth middleware
-│   ├── models/           # Data structures
-│   └── repository/       # Database queries
-├── migrations/           # SQL migration files
-├── web/                  # React frontend
-│   ├── src/
-│   │   ├── components/   # UI components (shadcn/ui)
-│   │   ├── features/     # Feature modules
-│   │   └── lib/          # Utilities
-│   └── package.json
-├── Dockerfile            # Multi-stage production build
-├── docker-compose.yml    # Local development
-├── go.mod
-└── Makefile
+│   ├── config/             # environment configuration
+│   ├── database/           # connection pool + migration runner
+│   ├── handlers/           # HTTP handlers
+│   ├── middleware/         # CORS
+│   ├── models/             # data structures
+│   └── repository/         # database queries (pgx/v5)
+├── migrations/             # SQL migrations (embedded into the binary)
+└── web/                    # React frontend (Vite + TypeScript + Tailwind)
+    └── src/
+        ├── components/     # shared components
+        └── features/       # feature modules (counter demo)
 ```
 
-## API Endpoints
+## API
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/health | Health check |
-| GET | /api/counter | Get counter value |
-| POST | /api/counter/increment | Increment counter |
-| POST | /api/counter/decrement | Decrement counter |
+| Method | Path                     | Description                  |
+| ------ | ------------------------ | ---------------------------- |
+| GET    | `/api/health`            | Health check (pings the DB)  |
+| GET    | `/api/counter`           | Current counter value        |
+| POST   | `/api/counter/increment` | Increment and return counter |
+| POST   | `/api/counter/decrement` | Decrement and return counter |
 
-## Available Commands
+## Make targets
+
+| Target | Description |
+| ------ | ----------- |
+| `make dev` | Run the backend in development mode |
+<!-- {{DOCKER_DB_BLOCK_START}} -->
+| `make db-up` / `make db-down` | Start / stop the PostgreSQL container |
+| `make db-shell` | psql shell into the database |
+| `make db-reset` | Recreate the database from scratch (deletes data) |
+<!-- {{DOCKER_DB_BLOCK_END}} -->
+<!-- {{LOCAL_DB_BLOCK_START}} -->
+| `make db-create` / `make db-drop` | Create / drop the local database |
+| `make db-shell` | psql shell into the database |
+<!-- {{LOCAL_DB_BLOCK_END}} -->
+| `make build` | Production build: frontend assets + static Go binary (`bin/api`) |
+| `make start` | Run the production binary (serves the frontend from `web/dist`) |
+| `make tidy` | `go mod tidy` |
+| `make clean` | Remove build artifacts |
+
+## Production build
 
 ```bash
-make dev          # Start with Docker Compose
-make dev-build    # Rebuild and start
-make dev-down     # Stop containers
-make run          # Run Go server locally
-make tidy         # Run go mod tidy
-make build-frontend  # Build frontend for production
+make build   # builds web/dist and bin/api
+make start   # single binary serves API + frontend on :8080
 ```
 
-## Adding shadcn/ui Components
+The binary is fully self-contained: migrations are embedded, and the frontend is served from `web/dist`. Deploy `bin/api` + `web/dist` together, set `DATABASE_URL` (and optionally `PORT`, `CORS_ORIGINS`), and you're done.
+
+## Adding a migration
+
+Create `migrations/000002_<name>.up.sql` (and a matching `.down.sql`). Migrations are applied in order on startup, tracked in the `schema_migrations` table, and each runs inside a transaction.
+
+<!-- {{SHADCN_BLOCK_START}} -->
+## Adding shadcn/ui components
 
 ```bash
 cd web
-npx shadcn@latest add <component-name>
+npx shadcn@latest add <component>
 ```
-
-## Environment Variables
-
-Copy `.env.example` to `.env` and configure:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| PORT | Server port | 8080 |
-| DB_HOST | Database host | localhost |
-| DB_PORT | Database port | 5432 |
-| DB_USER | Database user | postgres |
-| DB_PASSWORD | Database password | postgres |
-| DB_NAME | Database name | {{DB_NAME}} |
-| CORS_ORIGINS | Allowed CORS origins | http://localhost:5173 |
-
-## License
-
-MIT
+<!-- {{SHADCN_BLOCK_END}} -->

@@ -5,33 +5,37 @@ export function printSuccess(answers: ProjectAnswers): void {
   console.log('\n' + chalk.green('  Success!') + ' Created ' + chalk.cyan(answers.projectName) + '\n');
 
   console.log(chalk.dim('  Stack:'));
-  console.log(chalk.dim(`    Go Framework:       ${answers.goFramework === 'gin' ? 'Gin' : 'Standard Library (net/http)'}`));
-  console.log(chalk.dim(`    State Management:   ${answers.stateManagement === 'redux' ? 'Redux Toolkit' : 'Simple (useState)'}`));
-  console.log(chalk.dim(`    Authentication:     ${answers.useAuth ? 'Google OAuth' : 'None'}`));
-  console.log(chalk.dim(`    Docker:             ${answers.dockerEnv === 'full' ? 'Local + Staging + Production' : 'Local only'}\n`));
+  console.log(chalk.dim('    Backend:      Go (net/http) + pgx'));
+  console.log(chalk.dim(`    Frontend:     React + Vite + Tailwind${answers.useShadcn ? ' + shadcn/ui' : ''}`));
+  console.log(chalk.dim(`    Database:     PostgreSQL 18 (${answers.database === 'docker' ? 'Docker' : 'local install'})\n`));
 
   console.log(chalk.bold('  Next steps:\n'));
 
-  console.log(chalk.cyan('  1. Start the development servers:'));
-  console.log(chalk.dim('     # Terminal 1: Start database + backend'));
-  console.log(`     cd ${answers.projectName}`);
-  console.log('     cp .env.example .env');
-  console.log('     docker compose up\n');
+  let step = 1;
+  if (answers.database === 'local') {
+    console.log(chalk.cyan(`  ${step++}. Create the database (PostgreSQL 18 must be running):`));
+    console.log(`     cd ${answers.projectName}`);
+    console.log('     make db-create\n');
+  }
 
-  console.log(chalk.dim('     # Terminal 2: Start frontend'));
+  console.log(chalk.cyan(`  ${step++}. Start the backend${answers.database === 'docker' ? ' (starts the database in Docker first)' : ''}:`));
+  if (answers.database === 'docker') {
+    console.log(`     cd ${answers.projectName}`);
+  }
+  console.log('     make dev\n');
+
+  console.log(chalk.cyan(`  ${step++}. Start the frontend (new terminal):`));
   console.log(`     cd ${answers.projectName}/web`);
   console.log('     npm install');
   console.log('     npm run dev\n');
 
-  console.log(chalk.cyan('  2. Initialize Go modules:'));
-  console.log(`     cd ${answers.projectName}`);
-  console.log('     go mod tidy\n');
-
-  console.log(chalk.cyan('  3. Open your app:'));
+  console.log(chalk.cyan(`  ${step}. Open your app:`));
   console.log('     http://localhost:5173\n');
 
   console.log(chalk.dim('  ─'.repeat(25)));
-  console.log(chalk.dim('  Database migrations run automatically on startup.'));
-  console.log(chalk.dim('  Add shadcn components: cd web && npx shadcn@latest add <component>'));
+  console.log(chalk.dim('  Migrations run automatically when the backend starts.'));
+  if (answers.useShadcn) {
+    console.log(chalk.dim('  Add shadcn components: cd web && npx shadcn@latest add <component>'));
+  }
   console.log(chalk.dim(`  Documentation: ${answers.projectName}/README.md\n`));
 }

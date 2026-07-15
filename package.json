@@ -1,7 +1,7 @@
 {
   "name": "@anoobsuresh0/react-go-stack-app",
-  "version": "2.0.4",
-  "description": "CLI to scaffold production-ready full-stack apps with Go (Gin or stdlib), React 19 (Vite + TypeScript + Tailwind + shadcn/ui), PostgreSQL, and Docker with optional Google OAuth",
+  "version": "3.0.0",
+  "description": "CLI to scaffold production-ready full-stack apps with Go (net/http), React (Vite + TypeScript + Tailwind, optional shadcn/ui), and PostgreSQL 18 (Docker or local)",
   "type": "module",
   "bin": {
     "react-go-stack-app": "./bin/index.js"
@@ -40,18 +40,17 @@
   },
   "homepage": "https://github.com/anoobsuresh0/react-go-stack-app#readme",
   "dependencies": {
+    "@inquirer/prompts": "^8.0.0",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
     "fs-extra": "^11.2.0",
-    "inquirer": "^9.2.23",
     "ora": "^8.0.1",
     "validate-npm-package-name": "^5.0.1"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
-    "@types/inquirer": "^9.0.7",
-    "@types/node": "^20.14.0",
+    "@types/node": "^24.13.2",
     "@types/validate-npm-package-name": "^4.0.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.9.3"
   }
 }
